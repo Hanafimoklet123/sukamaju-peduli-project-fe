@@ -4,12 +4,16 @@ Implementasi desain Figma untuk halaman publik, warga, pegawai dan admin. Kini t
 
 ## Menjalankan bersama backend
 
-Gunakan Node.js 24 LTS dan npm. Siapkan backend sesuai README `sukamaju-peduli-backend`, jalankan migrasi/seed, lalu backend pada port 4000. Di frontend, salin `.env.example` menjadi `.env.local`:
+Untuk deployment Docker dan komunikasi antar-container, lihat
+[panduan container](docs/CONTAINERS.md). Frontend sudah menyediakan Dockerfile
+produksi dan `compose.yaml` dengan network bersama `sukamaju-app`.
+
+Gunakan Node.js 24 LTS dan npm. Siapkan backend sesuai README `sukamaju-peduli-backend`, jalankan migrasi/seed, lalu backend pada port 4001. Di frontend, salin `.env.example` menjadi `.env.local`:
 
 ```dotenv
 NEXT_PUBLIC_DATA_MODE=api
 NEXT_PUBLIC_ENABLE_DEMO=true
-BACKEND_URL=http://127.0.0.1:4000
+BACKEND_URL=http://127.0.0.1:4001
 ```
 
 ```sh

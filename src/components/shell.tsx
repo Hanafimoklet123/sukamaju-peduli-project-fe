@@ -214,7 +214,7 @@ export function Footer() {
       </div>
       <div className="footer-bottom">
         <small>© 2026 Sukamaju Peduli</small>
-        <small>Ilustrasi kegiatan dan wisata merupakan contoh.</small>
+        <small>Bersama merawat lingkungan Sukamaju.</small>
       </div>
     </footer>
   );

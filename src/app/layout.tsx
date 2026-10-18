@@ -16,7 +16,8 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id">
-      <body>
+      {/* Browser extensions such as Grammarly add body attributes before hydration. */}
+      <body suppressHydrationWarning>
         <DemoProvider>{children}</DemoProvider>
       </body>
     </html>

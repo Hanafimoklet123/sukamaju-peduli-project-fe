@@ -1,11 +1,19 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { Eye, EyeOff, ArrowRight, Check } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
+import {
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useDemo } from "@/lib/demo-provider";
 import { home } from "@/lib/domain";
-import { Alert, Art, Back, Brand, Button, Card, Field, Heading } from "./ui";
+import { Alert, Back, Brand, Button, Card, Field, Heading } from "./ui";
 import { Footer } from "./shell";
 import { api, API_MODE, DEMO_SHORTCUTS } from "@/lib/api";
 const steps = [
@@ -36,6 +44,145 @@ const faqs = [
     "Gunakan menu pemulihan akun atau hubungi pengelola layanan kelurahan.",
   ],
 ];
+const stories = [
+  {
+    image: 1,
+    category: "KEGIATAN LINGKUNGAN",
+    title: "Bersama hadir di tengah warga",
+    description:
+      "Kebersamaan warga dan aparatur dalam kegiatan di lingkungan Sukamaju.",
+    alt: "Warga dan aparatur berfoto bersama di depan rumah warga",
+  },
+  {
+    image: 2,
+    category: "RUANG WARGA",
+    title: "Bertemu dan berbagi cerita",
+    description:
+      "Pertemuan menjadi ruang untuk saling menyapa dan mempererat hubungan antarwarga.",
+    alt: "Warga duduk bersama dalam pertemuan di bawah kanopi",
+  },
+  {
+    image: 3,
+    category: "KEBERSAMAAN WARGA",
+    title: "Dekat dengan tetangga, erat dalam kebersamaan",
+    description:
+      "Momen bersama warga yang menghidupkan suasana akrab di lingkungan kita.",
+    alt: "Warga berfoto bersama di jalan lingkungan",
+  },
+  {
+    image: 4,
+    category: "KEGIATAN MASYARAKAT",
+    title: "Meramaikan kegiatan lingkungan",
+    description:
+      "Warga dan petugas hadir bersama dalam kegiatan masyarakat di Sukamaju.",
+    alt: "Warga dan petugas menghadiri kegiatan di halaman gedung",
+  },
+];
+
+function StoryCarousel() {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [active, setActive] = useState(0);
+  const pages = [stories.slice(0, 2), stories.slice(2, 4)];
+  function goTo(page: number) {
+    setActive((page + pages.length) % pages.length);
+  }
+  return (
+    <div
+      className="story-carousel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Cerita dari lingkungan kita"
+    >
+      <div
+        className="story-viewport"
+        tabIndex={0}
+        onTouchStart={(event) => {
+          touchStart.current = {
+            x: event.touches[0].clientX,
+            y: event.touches[0].clientY,
+          };
+        }}
+        onTouchEnd={(event) => {
+          const start = touchStart.current;
+          touchStart.current = null;
+          if (!start) return;
+          const dx = event.changedTouches[0].clientX - start.x;
+          const dy = event.changedTouches[0].clientY - start.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy))
+            goTo(active + (dx < 0 ? 1 : -1));
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+            event.preventDefault();
+            goTo(active + (event.key === "ArrowRight" ? 1 : -1));
+          }
+        }}
+      >
+        <div
+          className="story-track"
+          style={{ transform: `translateX(-${active * 100}%)` }}
+        >
+          {pages.map((page, index) => (
+            <div
+              className="story-grid story-slide"
+              key={index}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} dari ${pages.length}`}
+              inert={active !== index}
+            >
+              {page.map((story) => (
+                <article key={story.image}>
+                  <div className="story-photo">
+                    <Image
+                      src={`/assets/img/sukamaju_image_${story.image}.jpg`}
+                      alt={story.alt}
+                      fill
+                      sizes="(max-width: 760px) calc(100vw - 88px), (max-width: 1250px) 44vw, 552px"
+                    />
+                  </div>
+                  <p className="eyebrow">{story.category}</p>
+                  <h3>{story.title}</h3>
+                  <p className="muted">{story.description}</p>
+                </article>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="story-controls">
+        <button
+          className="icon-button"
+          aria-label="Cerita sebelumnya"
+          onClick={() => goTo(active - 1)}
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <div className="story-dots">
+          {pages.map((_, index) => (
+            <button
+              key={index}
+              className="story-dot"
+              aria-label={`Tampilkan slide ${index + 1}`}
+              aria-current={active === index ? "true" : undefined}
+              onClick={() => goTo(index)}
+            />
+          ))}
+        </div>
+        <button
+          className="icon-button"
+          aria-label="Cerita berikutnya"
+          onClick={() => goTo(active + 1)}
+        >
+          <ChevronRight size={20} />
+        </button>
+        <span className="sr-only" aria-live="polite">
+          Slide {active + 1} dari {pages.length}
+        </span>
+      </div>
+    </div>
+  );
+}
 export function Landing() {
   return (
     <>
@@ -64,7 +211,15 @@ export function Landing() {
               Laporan ditangani admin dan pegawai sesuai kewenangan.
             </small>
           </div>
-          <Art kind="village" />
+          <div className="hero-photo">
+            <Image
+              src="/assets/img/sukamaju_image_3.jpg"
+              alt="Kebersamaan warga Sukamaju di lingkungan tempat tinggal"
+              fill
+              sizes="(max-width: 760px) 100vw, 48vw"
+              loading="eager"
+            />
+          </div>
         </div>
         <div className="section-heading">
           <h2>Cerita dari lingkungan kita</h2>
@@ -72,32 +227,7 @@ export function Landing() {
             Ruang untuk mengenalkan kegiatan warga dan potensi daerah.
           </p>
         </div>
-        <div className="story-grid">
-          <article>
-            <Art kind="activity" />
-            <p className="eyebrow">KEGIATAN WARGA</p>
-            <h3>Gotong royong lingkungan</h3>
-            <p className="muted">
-              Contoh kegiatan bersama untuk menjaga lingkungan tetap bersih dan
-              nyaman.
-            </p>
-            <small className="muted">
-              Ilustrasi konten contoh • perlu konfirmasi pengelola
-            </small>
-          </article>
-          <article>
-            <Art kind="tourism" />
-            <p className="eyebrow">POTENSI WISATA</p>
-            <h3>Ruang hijau & wisata lokal</h3>
-            <p className="muted">
-              Contoh area rekreasi untuk memperkenalkan potensi alam dan ruang
-              bersama.
-            </p>
-            <small className="muted">
-              Ilustrasi konten contoh • perlu konfirmasi pengelola
-            </small>
-          </article>
-        </div>
+        <StoryCarousel />
       </section>
       <section className="landing-section purpose" id="tujuan">
         <h2>
@@ -414,7 +544,15 @@ export function Authentication({ register = false }: { register?: boolean }) {
         <p className="muted">
           Sampaikan laporan dan ikuti proses penanganannya dalam satu tempat.
         </p>
-        <Art kind="village" />
+        <div className="hero-photo">
+          <Image
+            src="/assets/img/sukamaju_image_1.jpg"
+            alt="Warga dan aparatur Sukamaju berfoto bersama di lingkungan warga"
+            fill
+            loading="eager"
+            sizes="(max-width: 760px) 100vw, 48vw"
+          />
+        </div>
         <ul className="checklist">
           {[
             "Laporan pribadi dan terarah",

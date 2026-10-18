@@ -1,0 +1,19 @@
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        BACKEND_URL: ${BACKEND_URL:-http://backend:4001}
+        NEXT_PUBLIC_DATA_MODE: api
+        NEXT_PUBLIC_ENABLE_DEMO: "false"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    restart: unless-stopped
+    init: true
+    networks:
+      - app
+
+networks:
+  app:
+    external: true
+    name: sukamaju-app
