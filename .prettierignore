@@ -1,0 +1,7 @@
+node_modules
+.next
+.browser-temp
+playwright-report
+test-results
+public/assets
+package-lock.json
