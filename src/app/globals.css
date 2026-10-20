@@ -1697,6 +1697,9 @@ hr {
   gap: 64px;
   align-items: start;
 }
+.citizen-content.auth-content {
+  min-height: 0;
+}
 .auth-intro {
   display: flex;
   flex-direction: column;

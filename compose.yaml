@@ -3,7 +3,7 @@ services:
     build:
       context: .
       args:
-        BACKEND_URL: ${BACKEND_URL:-http://backend:4001}
+        BACKEND_URL: ${BACKEND_URL:-https://be.capstone-klmpk-b.my.id}
         NEXT_PUBLIC_DATA_MODE: api
         NEXT_PUBLIC_ENABLE_DEMO: "false"
     ports:

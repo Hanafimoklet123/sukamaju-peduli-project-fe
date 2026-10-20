@@ -4,9 +4,30 @@ Implementasi desain Figma untuk halaman publik, warga, pegawai dan admin. Kini t
 
 ## Menjalankan bersama backend
 
-Untuk deployment Docker dan komunikasi antar-container, lihat
-[panduan container](docs/CONTAINERS.md). Frontend sudah menyediakan Dockerfile
-produksi dan `compose.yaml` dengan network bersama `sukamaju-app`.
+Frontend menyediakan Dockerfile produksi dan `compose.yaml` dengan network
+bersama `sukamaju-peduli-project`. Untuk VPS, buat `.env` dari `docker.env.example`
+atau perbarui nilainya jika `.env` sudah ada:
+
+```dotenv
+BACKEND_URL=https://be.capstone-klmpk-b.my.id
+FRONTEND_PORT=3002
+```
+
+Jalankan `docker compose up -d --build frontend`. `BACKEND_URL` diterapkan saat
+build Next.js, sehingga mengubahnya memerlukan rebuild. Jangan menambahkan
+`/api` pada URL. Konfigurasi `.env` atau environment shell mengalahkan default
+Compose; periksa hasil `docker compose config` sebelum deploy.
+
+Jika koneksi jaringan internal telah dikonfirmasi, URL dapat diganti menjadi
+`http://backend:4001` sesuai nama/alias dan port internal backend. Browser tetap
+mengirim request `/api/*` ke domain frontend. Backend harus mengizinkan origin
+`https://fe.capstone-klmpk-b.my.id` dan pengaturan cookie untuk HTTPS.
+
+Setelah deploy, cek `curl -i https://fe.capstone-klmpk-b.my.id/api/health`.
+Respons health seharusnya 200 JSON. Endpoint `/api/workspace` tanpa login
+seharusnya 401 JSON, bukan 500 atau HTML. Jika belum sesuai, periksa
+`docker compose logs --tail=80 frontend`. Jangan mengganti kredensial database
+untuk memperbaiki tujuan proxy frontend.
 
 Gunakan Node.js 24 LTS dan npm. Siapkan backend sesuai README `sukamaju-peduli-backend`, jalankan migrasi/seed, lalu backend pada port 4001. Di frontend, salin `.env.example` menjadi `.env.local`:
 

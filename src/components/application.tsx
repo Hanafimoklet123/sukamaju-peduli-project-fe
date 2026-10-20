@@ -54,7 +54,7 @@ export function Application() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [path]);
-  if (!store.ready || (protectedPage && !store.user))
+  if (protectedPage && (!store.ready || !store.user))
     return (
       <main className="standalone" aria-busy="true">
         <div className="skeleton" />

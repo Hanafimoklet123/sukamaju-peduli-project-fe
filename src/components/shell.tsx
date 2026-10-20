@@ -166,9 +166,14 @@ export function Shell({
                 </Link>
               )}
               {!user && (
-                <Link href="/review" onClick={() => setMobile(false)}>
-                  Panduan review
-                </Link>
+                <>
+                  <Link href="/masuk" onClick={() => setMobile(false)}>
+                    Masuk
+                  </Link>
+                  <Link href="/daftar" onClick={() => setMobile(false)}>
+                    Daftar akun
+                  </Link>
+                </>
               )}
             </nav>
           )}
@@ -180,7 +185,7 @@ export function Shell({
               ? "landing"
               : internal
                 ? "page-content internal-content"
-                : "page-content citizen-content"
+                : `page-content citizen-content${["/masuk", "/daftar", "/pulihkan-akun"].includes(path) ? " auth-content" : ""}`
           }
         >
           {children}
