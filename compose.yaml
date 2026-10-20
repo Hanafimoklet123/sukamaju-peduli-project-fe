@@ -16,4 +16,4 @@ services:
 networks:
   app:
     external: true
-    name: sukamaju-app
+    name: sukamaju-peduli-project
