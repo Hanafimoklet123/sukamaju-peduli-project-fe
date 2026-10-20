@@ -10,6 +10,10 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Inbox,
+  Wrench,
+  CircleCheck,
+  CircleX,
 } from "lucide-react";
 import { useDemo } from "@/lib/demo-provider";
 import { home } from "@/lib/domain";
@@ -308,10 +312,15 @@ export function Landing() {
     </>
   );
 }
+function BackToHome() {
+  const { user } = useDemo();
+  return <Back href={user ? home(user.role) : "/"}>Kembali ke beranda</Back>;
+}
+
 export function Guide() {
   return (
     <>
-      <Back href="/">Kembali ke beranda</Back>
+      <BackToHome />
       <Heading
         eyebrow="PANDUAN PENGADUAN"
         title="Laporan yang jelas membantu penanganan."
@@ -376,20 +385,62 @@ export function Guide() {
           </Alert>
         </aside>
       </div>
-      <Card>
-        <h2>Kenali status pengaduan</h2>
-        <div className="four-grid">
+      <Card className="status-guide">
+        <div className="stack compact">
+          <h2>Kenali status pengaduan</h2>
+          <p className="muted">
+            Dari laporan diterima hingga hasil penanganan tersedia.
+          </p>
+        </div>
+        <ol
+          className="status-timeline"
+          aria-label="Tahapan penanganan pengaduan"
+        >
           {[
-            ["Diterima", "Laporan tersimpan dan menunggu admin."],
-            ["Diproses", "Pegawai memeriksa dan menindaklanjuti."],
-            ["Selesai", "Hasil penanganan telah dicatat."],
-            ["Ditolak", "Alasan dan arahan tersedia pada detail."],
-          ].map(([s, d]) => (
-            <div key={s}>
-              <strong>{s}</strong>
-              <p className="muted">{d}</p>
-            </div>
+            {
+              title: "Diterima",
+              description: "Laporan tersimpan dan menunggu pemeriksaan admin.",
+              icon: Inbox,
+              tone: "received",
+            },
+            {
+              title: "Diproses",
+              description:
+                "Pegawai memeriksa dan menindaklanjuti laporan Anda.",
+              icon: Wrench,
+              tone: "processing",
+            },
+            {
+              title: "Selesai",
+              description:
+                "Hasil penanganan telah dicatat dan dapat Anda lihat.",
+              icon: CircleCheck,
+              tone: "completed",
+            },
+          ].map(({ title, description, icon: Icon, tone }, index) => (
+            <li key={title} className={`status-step ${tone}`}>
+              <span className="status-marker">
+                <Icon size={22} aria-hidden="true" />
+              </span>
+              <div className="status-step-copy">
+                <span className="status-step-number">TAHAP 0{index + 1}</span>
+                <h3>{title}</h3>
+                <p className="muted">{description}</p>
+              </div>
+            </li>
           ))}
+        </ol>
+        <div className="status-alternative">
+          <span className="status-alternative-icon">
+            <CircleX size={22} aria-hidden="true" />
+          </span>
+          <div>
+            <h3>Jika laporan ditolak</h3>
+            <p className="muted">
+              Baca alasan dan arahan pada detail pengaduan. Jika perlu, buat
+              laporan baru dengan informasi yang sudah diperbaiki.
+            </p>
+          </div>
         </div>
       </Card>
       <Alert title="Bukan saluran darurat" tone="warning">
@@ -402,7 +453,7 @@ export function Guide() {
 export function Help() {
   return (
     <>
-      <Back href="/">Kembali ke beranda</Back>
+      <BackToHome />
       <Heading
         title="Bantuan layanan"
         description="Temukan jawaban dan petunjuk penggunaan Sukamaju Peduli."
@@ -454,7 +505,7 @@ export function Help() {
 export function Privacy() {
   return (
     <>
-      <Back href="/">Kembali ke beranda</Back>
+      <BackToHome />
       <Heading
         title="Kebijakan privasi"
         description="Rancangan informasi pengelolaan data untuk layanan Sukamaju Peduli."

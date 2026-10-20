@@ -131,9 +131,6 @@ export function Shell({
                         <Link href="/akun" onClick={() => setAccount(false)}>
                           Akun saya
                         </Link>
-                        <Link href="/review" onClick={() => setAccount(false)}>
-                          Panduan review
-                        </Link>
                         <button onClick={exit}>
                           <LogOut size={15} />
                           Keluar
@@ -168,9 +165,11 @@ export function Shell({
                   Akun saya
                 </Link>
               )}
-              <Link href="/review" onClick={() => setMobile(false)}>
-                Panduan review
-              </Link>
+              {!user && (
+                <Link href="/review" onClick={() => setMobile(false)}>
+                  Panduan review
+                </Link>
+              )}
             </nav>
           )}
         </header>
@@ -188,9 +187,11 @@ export function Shell({
         </main>
         {!role && path !== "/" && <Footer />}
       </div>
-      <Link className="demo-badge" href="/review">
-        {API_MODE ? "Panduan review" : "Demo frontend"}
-      </Link>
+      {!user && (
+        <Link className="demo-badge" href="/review">
+          {API_MODE ? "Panduan review" : "Demo frontend"}
+        </Link>
+      )}
     </div>
   );
 }

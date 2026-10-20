@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { ArrowRight, Check, Plus, Upload, X } from "lucide-react";
+import { ArrowRight, Check, Upload, X } from "lucide-react";
 import { useDemo } from "@/lib/demo-provider";
 import { localDate } from "@/lib/domain";
 import {
@@ -302,14 +302,6 @@ export function ReportList({ role }: { role: Role }) {
               ? "Kelola tugas aktif dan baca arsip penanganan Anda."
               : "Pantau setiap laporan dan baca hasil penanganannya."
         }
-        action={
-          role === "warga" && (
-            <Button href="/warga/pengaduan/buat">
-              <Plus size={17} />
-              Buat pengaduan
-            </Button>
-          )
-        }
       />
       {role === "warga" && (
         <div className="three-grid">
@@ -405,7 +397,15 @@ export function ReportList({ role }: { role: Role }) {
               ])}
             />
           ) : (
-            <ReportCards reports={paged} base={base} />
+            <div
+              key={`${current}-${JSON.stringify(applied)}`}
+              className="report-list-scroll"
+              role="region"
+              aria-label="Daftar pengaduan, gulir untuk melihat laporan lainnya"
+              tabIndex={0}
+            >
+              <ReportCards reports={paged} base={base} />
+            </div>
           )}
           <Pagination
             page={current}
