@@ -185,6 +185,7 @@ export function PerformanceChart({
       {table && (
         <DataTable
           title="Data grafik"
+          mobileTable
           headers={["Periode", "Masuk", ...(!cohort ? ["Selesai"] : [])]}
           rows={buckets.map((b) => [
             b.label,

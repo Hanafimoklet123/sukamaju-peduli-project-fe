@@ -2,14 +2,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Eye,
   EyeOff,
   ArrowRight,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Inbox,
   Wrench,
   CircleCheck,
@@ -84,12 +82,32 @@ const stories = [
 ];
 
 function StoryCarousel() {
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const [active, setActive] = useState(0);
+  const viewport = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; left: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const pages = [stories.slice(0, 2), stories.slice(2, 4)];
-  function goTo(page: number) {
-    setActive((page + pages.length) % pages.length);
-  }
+  const loopPages = [...pages, ...pages, ...pages];
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element) return;
+    element.scrollLeft = element.clientWidth * 2;
+    let lastWheel = -Infinity;
+    function wheel(event: WheelEvent) {
+      if (event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY))
+        return;
+      const direction = Math.sign(event.deltaY);
+      if (!direction || !element) return;
+      event.preventDefault();
+      if (performance.now() - lastWheel < 500) return;
+      lastWheel = performance.now();
+      element.scrollBy({
+        left: direction * element.clientWidth,
+        behavior: "smooth",
+      });
+    }
+    element.addEventListener("wheel", wheel, { passive: false });
+    return () => element.removeEventListener("wheel", wheel);
+  }, []);
   return (
     <div
       className="story-carousel"
@@ -98,91 +116,93 @@ function StoryCarousel() {
       aria-label="Cerita dari lingkungan kita"
     >
       <div
-        className="story-viewport"
+        ref={viewport}
+        className={`story-viewport${dragging ? " dragging" : ""}`}
         tabIndex={0}
-        onTouchStart={(event) => {
-          touchStart.current = {
-            x: event.touches[0].clientX,
-            y: event.touches[0].clientY,
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          const width = element.clientWidth;
+          if (!width) return;
+          const offset =
+            element.scrollLeft <= width + 1
+              ? width * 2
+              : element.scrollLeft >= width * 4 - 1
+                ? -width * 2
+                : 0;
+          if (offset) {
+            element.scrollLeft += offset;
+            if (drag.current) drag.current.left += offset;
+          }
+        }}
+        aria-label="Geser cerita ke samping dengan sentuhan, drag, scroll, atau tombol panah"
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse" || event.button !== 0) return;
+          drag.current = {
+            x: event.clientX,
+            left: event.currentTarget.scrollLeft,
           };
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setDragging(true);
         }}
-        onTouchEnd={(event) => {
-          const start = touchStart.current;
-          touchStart.current = null;
-          if (!start) return;
-          const dx = event.changedTouches[0].clientX - start.x;
-          const dy = event.changedTouches[0].clientY - start.y;
-          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy))
-            goTo(active + (dx < 0 ? 1 : -1));
+        onPointerMove={(event) => {
+          if (!drag.current) return;
+          event.currentTarget.scrollLeft =
+            drag.current.left + drag.current.x - event.clientX;
         }}
+        onPointerUp={(event) => {
+          if (!drag.current) return;
+          drag.current = null;
+          setDragging(false);
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }}
+        onLostPointerCapture={() => {
+          drag.current = null;
+          setDragging(false);
+        }}
+        onDragStart={(event) => event.preventDefault()}
         onKeyDown={(event) => {
           if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
             event.preventDefault();
-            goTo(active + (event.key === "ArrowRight" ? 1 : -1));
+            event.currentTarget.scrollBy({
+              left:
+                (event.key === "ArrowRight" ? 1 : -1) *
+                event.currentTarget.clientWidth,
+              behavior: "smooth",
+            });
           }
         }}
       >
-        <div
-          className="story-track"
-          style={{ transform: `translateX(-${active * 100}%)` }}
-        >
-          {pages.map((page, index) => (
-            <div
-              className="story-grid story-slide"
-              key={index}
-              role="group"
-              aria-roledescription="slide"
-              aria-label={`${index + 1} dari ${pages.length}`}
-              inert={active !== index}
-            >
-              {page.map((story) => (
-                <article key={story.image}>
-                  <div className="story-photo">
-                    <Image
-                      src={`/assets/img/sukamaju_image_${story.image}.jpg`}
-                      alt={story.alt}
-                      fill
-                      sizes="(max-width: 760px) calc(100vw - 88px), (max-width: 1250px) 44vw, 552px"
-                    />
-                  </div>
-                  <p className="eyebrow">{story.category}</p>
-                  <h3>{story.title}</h3>
-                  <p className="muted">{story.description}</p>
-                </article>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="story-controls">
-        <button
-          className="icon-button"
-          aria-label="Cerita sebelumnya"
-          onClick={() => goTo(active - 1)}
-        >
-          <ChevronLeft size={20} />
-        </button>
-        <div className="story-dots">
-          {pages.map((_, index) => (
-            <button
-              key={index}
-              className="story-dot"
-              aria-label={`Tampilkan slide ${index + 1}`}
-              aria-current={active === index ? "true" : undefined}
-              onClick={() => goTo(index)}
-            />
-          ))}
-        </div>
-        <button
-          className="icon-button"
-          aria-label="Cerita berikutnya"
-          onClick={() => goTo(active + 1)}
-        >
-          <ChevronRight size={20} />
-        </button>
-        <span className="sr-only" aria-live="polite">
-          Slide {active + 1} dari {pages.length}
-        </span>
+        {loopPages.map((page, index) => (
+          <div
+            className="story-grid story-slide"
+            key={index}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${(index % pages.length) + 1} dari ${pages.length}`}
+            aria-hidden={
+              index < pages.length || index >= pages.length * 2
+                ? true
+                : undefined
+            }
+          >
+            {page.map((story) => (
+              <article key={story.image}>
+                <div className="story-photo">
+                  <Image
+                    src={`/assets/img/sukamaju_image_${story.image}.jpg`}
+                    alt={story.alt}
+                    fill
+                    draggable={false}
+                    sizes="(max-width: 760px) calc(100vw - 88px), (max-width: 1250px) 44vw, 552px"
+                  />
+                </div>
+                <p className="eyebrow">{story.category}</p>
+                <h3>{story.title}</h3>
+                <p className="muted">{story.description}</p>
+              </article>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
   );

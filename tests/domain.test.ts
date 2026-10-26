@@ -215,3 +215,69 @@ describe("Alur domain pengaduan demo", () => {
     expect(chartBuckets([r], 2026, true)[3].completed).toBe(1);
   });
 });
+
+describe("Penghapusan data pengelolaan", () => {
+  it("menghapus kategori dari pengelolaan tanpa menghapus referensi laporan", () => {
+    const s = seed();
+    const result = applyCommand(
+      s,
+      { type: "delete", entity: "categories", actorId: "a1", id: "c1" },
+      date,
+    );
+    expect(result.result.ok).toBe(true);
+    expect(result.state.categories.find((c) => c.id === "c1")?.deletedAt).toBe(
+      date,
+    );
+    expect(result.state.categories.find((c) => c.id === "c1")?.active).toBe(
+      false,
+    );
+    expect(result.state.reports.length).toBe(s.reports.length);
+    expect(s.categories.find((c) => c.id === "c1")?.deletedAt).toBeUndefined();
+  });
+  it("menghapus akun warga dengan mempertahankan laporan", () => {
+    const s = seed();
+    const result = applyCommand(
+      s,
+      { type: "delete", entity: "citizens", actorId: "a1", id: "w1" },
+      date,
+    );
+    expect(result.result.ok).toBe(true);
+    expect(result.state.users.find((u) => u.id === "w1")?.state).toBe(
+      "inactive",
+    );
+    expect(result.state.users.find((u) => u.id === "w1")?.deletedAt).toBe(date);
+    expect(result.state.reports.length).toBe(s.reports.length);
+    expect(
+      applyCommand(
+        result.state,
+        { type: "submit", actorId: "w1", draft, requestId: "deleted" },
+        date,
+      ).result.ok,
+    ).toBe(false);
+  });
+  it("menolak pengguna nonadmin dan pegawai yang masih bertugas", () => {
+    const s = seed();
+    expect(
+      applyCommand(
+        s,
+        { type: "delete", entity: "categories", actorId: "w1", id: "c1" },
+        date,
+      ).result.ok,
+    ).toBe(false);
+    const task = s.reports.find((r) => r.status === "Diproses" && r.employeeId);
+    expect(task).toBeDefined();
+    const result = applyCommand(
+      s,
+      {
+        type: "delete",
+        entity: "employees",
+        actorId: "a1",
+        id: task!.employeeId!,
+      },
+      date,
+    );
+    expect(result.result.ok).toBe(false);
+    expect(result.result.error).toContain("tugas aktif");
+    expect(result.state).toBe(s);
+  });
+});

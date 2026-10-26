@@ -1,7 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { Plus } from "lucide-react";
+import { ArrowLeft, LockKeyhole, Plus, Trash2 } from "lucide-react";
 import { useDemo } from "@/lib/demo-provider";
 import { localDate } from "@/lib/domain";
 import { API_MODE } from "@/lib/api";
@@ -17,7 +18,131 @@ import {
   Field,
   Heading,
   Pagination,
+  Modal,
 } from "./ui";
+function DeleteRecord({
+  id,
+  name,
+  entity,
+}: {
+  id: string;
+  name: string;
+  entity: "categories" | "citizens" | "employees";
+}) {
+  const { user, command, notify } = useDemo();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const label =
+    entity === "categories"
+      ? "kategori"
+      : entity === "employees"
+        ? "akun pegawai"
+        : "akun warga";
+  async function remove() {
+    if (!user || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await command({
+        type: "delete",
+        actorId: user.id,
+        entity,
+        id,
+      });
+      if (!result.ok) {
+        setError(result.error || "Data belum dapat dihapus.");
+        return;
+      }
+      setOpen(false);
+      notify("Data berhasil dihapus dari daftar pengelolaan.");
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Data belum dapat dihapus. Silakan coba lagi.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <Button
+        variant="danger"
+        onClick={() => {
+          setError("");
+          setOpen(true);
+        }}
+        aria-label={"Hapus " + label + " " + name}
+      >
+        <Trash2 size={16} aria-hidden="true" /> Hapus
+      </Button>
+      {open && (
+        <Modal
+          title={"Hapus " + label + "?"}
+          onClose={() => {
+            if (!busy) setOpen(false);
+          }}
+        >
+          <div className="delete-record-content stack">
+            <p className="muted">
+              Periksa kembali {label} yang akan dihapus dari daftar pengelolaan.
+            </p>
+            <div className="delete-record-summary">
+              <span className="delete-record-icon">
+                <Trash2 size={22} aria-hidden="true" />
+              </span>
+              <div>
+                <strong className="break-word">{name}</strong>
+                <small className="muted">
+                  {entity === "categories"
+                    ? "Kategori pengaduan"
+                    : entity === "employees"
+                      ? "Akun pegawai"
+                      : "Akun warga"}
+                </small>
+              </div>
+            </div>
+            <Alert tone="warning" title="Dampak penghapusan">
+              {entity === "categories"
+                ? "Kategori tidak dapat dipilih untuk laporan baru. Riwayat laporan tetap tersimpan."
+                : "Akun tidak dapat login lagi. Riwayat laporan dan aktivitas tetap tersimpan."}
+            </Alert>
+            {entity === "employees" && (
+              <p className="muted small">
+                Alihkan seluruh tugas aktif pegawai sebelum menghapus akun.
+              </p>
+            )}
+            {error && (
+              <Alert title="Belum dapat dihapus" tone="error">
+                {error}
+              </Alert>
+            )}
+            <div className="actions delete-record-actions">
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={remove}
+                aria-busy={busy}
+              >
+                <Trash2 size={16} aria-hidden="true" />
+                {busy ? "Menghapus…" : `Hapus ${label}`}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
 export function Employees() {
   const { state } = useDemo(),
     [q, setQ] = useState(""),
@@ -25,8 +150,10 @@ export function Employees() {
   const users = state.users.filter(
     (u) =>
       u.role === "pegawai" &&
+      !u.deletedAt &&
       `${u.name} ${u.email}`.toLowerCase().includes(q.toLowerCase()),
   );
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(users.length / 5)));
   return (
     <>
       <Heading
@@ -58,9 +185,10 @@ export function Employees() {
       </Card>
       <DataTable
         title="Daftar pegawai"
+        compactMobile
         count={users.length}
         headers={["Nama", "Email", "Status", "Tugas aktif", "Aksi"]}
-        rows={users.slice((page - 1) * 5, page * 5).map((u) => [
+        rows={users.slice((currentPage - 1) * 5, currentPage * 5).map((u) => [
           u.name,
           <span key="e" className="muted break-word">
             {u.email}
@@ -75,23 +203,30 @@ export function Employees() {
                   : "Nonaktif"
             }
           />,
-          state.reports.filter((r) => r.employeeId === u.id).length,
-          <Button href={`/admin/pegawai/${u.id}`} key="b" variant="secondary">
-            Lihat profil
-          </Button>,
+          state.reports.filter(
+            (r) => r.employeeId === u.id && r.status === "Diproses",
+          ).length,
+          <div className="actions table-row-actions" key="b">
+            <Button href={`/admin/pegawai/${u.id}`} variant="secondary">
+              Lihat profil
+            </Button>
+            <DeleteRecord id={u.id} name={u.name} entity="employees" />
+          </div>,
         ])}
       />
       <Alert title="Akun dikelola admin">
         Pegawai memilih kata sandi sendiri melalui aktivasi sekali pakai.
       </Alert>
-      <Pagination page={page} total={users.length} onChange={setPage} />
+      <Pagination page={currentPage} total={users.length} onChange={setPage} />
     </>
   );
 }
 export function EmployeeForm({ id }: { id?: string }) {
   const { state, user, command, notify } = useDemo(),
     router = useRouter(),
-    target = state.users.find((u) => u.id === id && u.role === "pegawai");
+    target = state.users.find(
+      (u) => u.id === id && u.role === "pegawai" && !u.deletedAt,
+    );
   const [error, setError] = useState("");
   if (id && !target)
     return (
@@ -236,6 +371,17 @@ export function EmployeeForm({ id }: { id?: string }) {
 }
 export function Categories() {
   const { state } = useDemo();
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const categories = state.categories.filter(
+    (c) =>
+      !c.deletedAt &&
+      `${c.name} ${c.description}`.toLowerCase().includes(q.toLowerCase()),
+  );
+  const currentPage = Math.min(
+    page,
+    Math.max(1, Math.ceil(categories.length / 5)),
+  );
   return (
     <>
       <Heading
@@ -248,21 +394,41 @@ export function Categories() {
           </Button>
         }
       />
+      <Card>
+        <Field label="Cari kategori" htmlFor="search-category">
+          <input
+            id="search-category"
+            value={q}
+            placeholder="Cari nama atau deskripsi"
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
+          />
+        </Field>
+      </Card>
       <DataTable
         title="Daftar kategori"
+        count={categories.length}
         headers={["Kategori", "Deskripsi", "Status", "Aksi"]}
-        rows={state.categories.map((c) => [
-          c.name,
-          c.description,
-          <Badge key="s" status={c.active ? "Aktif" : "Nonaktif"} />,
-          <Button
-            key="e"
-            href={`/admin/kategori/${c.id}/ubah`}
-            variant="secondary"
-          >
-            Edit kategori
-          </Button>,
-        ])}
+        rows={categories
+          .slice((currentPage - 1) * 5, currentPage * 5)
+          .map((c) => [
+            c.name,
+            c.description,
+            <Badge key="s" status={c.active ? "Aktif" : "Nonaktif"} />,
+            <div className="actions table-row-actions" key="e">
+              <Button href={`/admin/kategori/${c.id}/ubah`} variant="secondary">
+                Edit kategori
+              </Button>
+              <DeleteRecord id={c.id} name={c.name} entity="categories" />
+            </div>,
+          ])}
+      />
+      <Pagination
+        page={currentPage}
+        total={categories.length}
+        onChange={setPage}
       />
       <Alert title="Riwayat tetap tersimpan">
         Kategori yang dipakai laporan lama dinonaktifkan tanpa menghapus
@@ -274,7 +440,7 @@ export function Categories() {
 export function CategoryForm({ id }: { id?: string }) {
   const { state, user, command, notify } = useDemo(),
     router = useRouter(),
-    target = state.categories.find((c) => c.id === id),
+    target = state.categories.find((c) => c.id === id && !c.deletedAt),
     used = !!id && state.reports.some((r) => r.categoryId === id),
     [error, setError] = useState("");
   if (id && !target)
@@ -303,79 +469,97 @@ export function CategoryForm({ id }: { id?: string }) {
   }
   return (
     <>
-      <Back href="/admin/kategori">Kembali ke kategori</Back>
+      <Link className="category-back" href="/admin/kategori">
+        <ArrowLeft size={18} aria-hidden="true" />
+        Kategori
+      </Link>
       <Heading
         title={id ? "Ubah kategori" : "Tambah kategori"}
         description="Pastikan kategori sesuai kewenangan kelurahan."
       />
-      <Card className="form-limit">
-        <form className="stack" onSubmit={submit}>
-          {error && (
-            <Alert title="Kategori belum disimpan" tone="error">
-              {error}
-            </Alert>
-          )}
-          <Field
-            label="Nama kategori"
-            htmlFor="name"
-            hint={
-              used
-                ? "Nama dikunci karena sudah dipakai laporan. Buat kategori pengganti jika diperlukan."
-                : undefined
-            }
-          >
-            <input
-              name="name"
-              id="name"
-              required
-              minLength={2}
-              maxLength={50}
-              defaultValue={target?.name}
-              readOnly={used}
-            />
-          </Field>
-          <Field label="Deskripsi" htmlFor="description">
-            <textarea
-              id="description"
-              name="description"
-              rows={4}
-              maxLength={255}
-              defaultValue={target?.description}
-            />
-          </Field>
-          <Field label="Status" htmlFor="state">
-            <select
-              id="state"
-              name="state"
-              defaultValue={target?.active === false ? "inactive" : "active"}
-            >
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
-            </select>
-          </Field>
-          <Alert title="Nonaktif tidak menghapus riwayat">
-            Kategori nonaktif tidak muncul pada laporan baru. Laporan lama tetap
-            dapat dibaca.
+      <form className="stack category-editor" onSubmit={submit}>
+        {error && (
+          <Alert title="Kategori belum disimpan" tone="error">
+            {error}
           </Alert>
-          <div className="actions align-end">
-            <Button type="submit">Simpan kategori</Button>
-            <Button variant="secondary" href="/admin/kategori">
-              Batal
-            </Button>
-          </div>
-        </form>
-      </Card>
+        )}
+        <div className="category-editor-grid">
+          <Card>
+            <h2>Informasi kategori</h2>
+            <Field
+              label="Nama kategori"
+              htmlFor="name"
+              hint={
+                used
+                  ? "Nama tidak dapat diubah karena sudah digunakan."
+                  : undefined
+              }
+            >
+              <div className={used ? "locked-category-input" : undefined}>
+                {used && <LockKeyhole size={18} aria-hidden="true" />}
+                <input
+                  name="name"
+                  id="name"
+                  required
+                  minLength={2}
+                  maxLength={50}
+                  defaultValue={target?.name}
+                  readOnly={used}
+                  aria-describedby={used ? "name-hint" : undefined}
+                />
+              </div>
+            </Field>
+            <Field label="Deskripsi" htmlFor="description">
+              <textarea
+                id="description"
+                name="description"
+                rows={3}
+                maxLength={255}
+                defaultValue={target?.description}
+              />
+            </Field>
+          </Card>
+          <Card className="category-settings">
+            <h2>Ketersediaan kategori</h2>
+            <Field label="Status" htmlFor="state">
+              <select
+                id="state"
+                name="state"
+                defaultValue={target?.active === false ? "inactive" : "active"}
+              >
+                <option value="active">Aktif</option>
+                <option value="inactive">Nonaktif</option>
+              </select>
+            </Field>
+            <Alert title="Nonaktif tidak menghapus riwayat">
+              Kategori nonaktif tidak muncul pada laporan baru. Laporan lama
+              tetap dapat dibaca.
+            </Alert>
+          </Card>
+        </div>
+        <div className="actions category-editor-actions">
+          <Button variant="secondary" href="/admin/kategori">
+            Batal
+          </Button>
+          <Button type="submit">
+            {id ? "Simpan perubahan" : "Simpan kategori"}
+          </Button>
+        </div>
+      </form>
     </>
   );
 }
 export function Citizens() {
   const { state } = useDemo(),
-    [q, setQ] = useState("");
+    [q, setQ] = useState(""),
+    [page, setPage] = useState(1);
   const users = state.users.filter(
     (u) =>
       u.role === "warga" &&
+      !u.deletedAt &&
       `${u.name} ${u.email}`.toLowerCase().includes(q.toLowerCase()),
   );
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(users.length / 5)));
   return (
     <>
       <Heading
@@ -391,15 +575,20 @@ export function Citizens() {
           <input
             id="find-citizen"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(1);
+            }}
             placeholder="Cari nama atau email"
           />
         </Field>
       </Card>
       <DataTable
         title="Daftar warga"
+        count={users.length}
+        compactMobile
         headers={["Nama", "Email", "Status", "Laporan", "Aksi"]}
-        rows={users.map((u) => [
+        rows={users.slice((currentPage - 1) * 5, currentPage * 5).map((u) => [
           u.name,
           <span key="e" className="break-word">
             {u.email}
@@ -409,15 +598,15 @@ export function Citizens() {
             status={u.state === "active" ? "Aktif" : "Nonaktif"}
           />,
           state.reports.filter((r) => r.userId === u.id).length,
-          <Button
-            key="a"
-            href={`/admin/warga/${u.id}/pulihkan`}
-            variant="secondary"
-          >
-            Bantuan akun
-          </Button>,
+          <div className="actions table-row-actions" key="a">
+            <Button href={`/admin/warga/${u.id}/pulihkan`} variant="secondary">
+              Bantuan akun
+            </Button>
+            <DeleteRecord id={u.id} name={u.name} entity="citizens" />
+          </div>,
         ])}
       />
+      <Pagination page={currentPage} total={users.length} onChange={setPage} />
       <Alert title="Kontak hanya untuk bantuan resmi">
         Jangan meminta atau mencatat kata sandi pengguna. Verifikasi identitas
         sesuai prosedur layanan.
@@ -427,7 +616,7 @@ export function Citizens() {
 }
 export function AccountRecovery({ id }: { id: string }) {
   const { state, user, command } = useDemo(),
-    target = state.users.find((u) => u.id === id),
+    target = state.users.find((u) => u.id === id && !u.deletedAt),
     [error, setError] = useState(""),
     [done, setDone] = useState(false),
     [issuedUrl, setIssuedUrl] = useState("");
@@ -442,79 +631,114 @@ export function AccountRecovery({ id }: { id: string }) {
     );
   return (
     <>
-      <Back href="/admin/warga">Kembali ke akun warga</Back>
+      <Back href="/admin/warga">Akun warga</Back>
       <Heading
         title="Bantuan pemulihan akun"
         description="Terbitkan tautan sekali pakai setelah pemeriksaan identitas."
       />
-      <Card className="form-limit">
-        <h2>{target.name}</h2>
-        <p className="muted">{target.email}</p>
-        {done ? (
-          <>
-            <Alert title="Tautan sekali pakai diterbitkan" tone="success">
-              Tindakan tercatat dalam audit. Tautan hanya ditampilkan pada
-              penerbitan ini. Berikan melalui kanal resmi kepada pemilik akun;
-              tidak ada email otomatis.
-            </Alert>
-            <Field label="Tautan untuk pemilik akun" htmlFor="issued-link">
-              <input
-                id="issued-link"
-                readOnly
-                value={issuedUrl}
-                onFocus={(e) => e.currentTarget.select()}
-              />
-            </Field>
-            <Button href={issuedUrl}>Buka halaman aktivasi / pemulihan</Button>
-          </>
-        ) : (
-          <form
-            className="stack"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const result = await command({
-                type: "recover",
-                actorId: user!.id,
-                userId: id,
-                reason: String(new FormData(e.currentTarget).get("reason")),
-              });
-              if (!result.ok) return setError(result.error!);
-              setIssuedUrl(result.url || "/pulihkan-akun?token=demo-recovery");
-              setDone(true);
-            }}
-          >
-            <Alert tone="warning" title="Periksa identitas pemohon">
-              Gunakan prosedur verifikasi yang disepakati pengelola layanan.
-              Jangan hanya mengandalkan email yang disebut pemohon.
-            </Alert>
-            {error && (
-              <Alert title="Belum dapat diterbitkan" tone="error">
-                {error}
+      <div className="account-recovery-layout">
+        <aside className="stack">
+          <Card>
+            <p className="eyebrow">AKUN YANG DIPULIHKAN</p>
+            <h2>{target.name}</h2>
+            <p className="muted break-word">{target.email}</p>
+            <hr />
+            <small className="muted">Status akun</small>
+            <Badge
+              status={
+                target.state === "active"
+                  ? "Aktif"
+                  : target.state === "pending"
+                    ? "Menunggu aktivasi"
+                    : "Nonaktif"
+              }
+            />
+          </Card>
+          <Alert tone="warning" title="Periksa identitas pemohon">
+            Gunakan prosedur verifikasi yang disepakati pengelola layanan.
+            Jangan hanya mengandalkan email yang disebut pemohon.
+          </Alert>
+        </aside>
+        <Card className="recovery-form-card">
+          <div className="stack compact">
+            <h2>{done ? "Tautan pemulihan siap" : "Verifikasi identitas"}</h2>
+            <p className="muted small">
+              {done
+                ? "Berikan tautan melalui kanal resmi kepada pemilik akun."
+                : "Catat hasil pemeriksaan sebelum menerbitkan tautan pemulihan."}
+            </p>
+          </div>
+          {done ? (
+            <>
+              <Alert title="Tautan sekali pakai diterbitkan" tone="success">
+                Tindakan tercatat dalam audit. Tautan hanya ditampilkan pada
+                penerbitan ini. Berikan melalui kanal resmi kepada pemilik akun;
+                tidak ada email otomatis.
               </Alert>
-            )}
-            <Field label="Dasar pemeriksaan identitas" htmlFor="reason">
-              <textarea
-                name="reason"
-                id="reason"
-                required
-                minLength={20}
-                maxLength={1000}
-                rows={4}
-                placeholder="Catat dasar pemeriksaan tanpa data sensitif yang tidak diperlukan."
-              />
-            </Field>
-            <label className="checkbox">
-              <input required type="checkbox" />
-              Identitas pemohon telah diverifikasi.
-            </label>
-            <Button type="submit">Terbitkan token sekali pakai</Button>
-            <small className="muted">
-              Rancangan token berlaku 30 menit. Penerbitan ulang membatalkan
-              token lama.
-            </small>
-          </form>
-        )}
-      </Card>
+              <Field label="Tautan untuk pemilik akun" htmlFor="issued-link">
+                <input
+                  id="issued-link"
+                  readOnly
+                  value={issuedUrl}
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+              </Field>
+              <Button href={issuedUrl}>
+                Buka halaman aktivasi / pemulihan
+              </Button>
+            </>
+          ) : (
+            <form
+              className="stack"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const result = await command({
+                  type: "recover",
+                  actorId: user!.id,
+                  userId: id,
+                  reason: String(new FormData(e.currentTarget).get("reason")),
+                });
+                if (!result.ok) return setError(result.error!);
+                setIssuedUrl(
+                  result.url || "/pulihkan-akun?token=demo-recovery",
+                );
+                setDone(true);
+              }}
+            >
+              {error && (
+                <Alert title="Belum dapat diterbitkan" tone="error">
+                  {error}
+                </Alert>
+              )}
+              <Field label="Dasar pemeriksaan identitas" htmlFor="reason">
+                <textarea
+                  name="reason"
+                  id="reason"
+                  required
+                  minLength={20}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="Catat dasar pemeriksaan tanpa data sensitif yang tidak diperlukan."
+                />
+              </Field>
+              <label className="checkbox">
+                <input required type="checkbox" />
+                Identitas pemohon telah diverifikasi.
+              </label>
+              <div className="actions recovery-form-actions">
+                <Button variant="secondary" href="/admin/warga">
+                  Batal
+                </Button>
+                <Button type="submit">Terbitkan tautan pemulihan</Button>
+              </div>
+              <small className="muted">
+                Rancangan token berlaku 30 menit. Penerbitan ulang membatalkan
+                token lama.
+              </small>
+            </form>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

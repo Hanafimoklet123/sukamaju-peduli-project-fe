@@ -236,6 +236,10 @@ export function DemoProvider({ children }: { children: React.ReactNode }) {
         method = "POST",
         body: unknown;
       switch (cmd.type) {
+        case "delete":
+          path = `/${cmd.entity}/${cmd.id}`;
+          method = "DELETE";
+          break;
         case "submit": {
           const { photo, photoName, ...data } = cmd.draft;
           path = "/reports";

@@ -184,7 +184,7 @@ export function Shell({
             path === "/"
               ? "landing"
               : internal
-                ? "page-content internal-content"
+                ? `page-content internal-content${role === "admin" ? " admin-content" : ""}`
                 : `page-content citizen-content${["/masuk", "/daftar", "/pulihkan-akun"].includes(path) ? " auth-content" : ""}`
           }
         >

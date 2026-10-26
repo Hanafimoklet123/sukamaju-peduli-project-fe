@@ -259,7 +259,29 @@ export function applyCommand(
   if (cmd.type !== "profile" && actor.role !== "admin")
     return fail("Hanya admin dapat mengelola data ini.");
   const state = structuredClone(current);
-  if (cmd.type === "employee") {
+  if (cmd.type === "delete") {
+    if (cmd.entity === "categories") {
+      const target = state.categories.find(
+        (c) => c.id === cmd.id && !c.deletedAt,
+      );
+      if (!target) return fail("Kategori tidak ditemukan.");
+      Object.assign(target, { active: false, deletedAt: now });
+    } else {
+      const role = cmd.entity === "employees" ? "pegawai" : "warga";
+      const target = state.users.find(
+        (u) => u.id === cmd.id && u.role === role && !u.deletedAt,
+      );
+      if (!target) return fail("Akun tidak ditemukan.");
+      if (
+        role === "pegawai" &&
+        state.reports.some(
+          (r) => r.employeeId === cmd.id && r.status === "Diproses",
+        )
+      )
+        return fail("Alihkan seluruh tugas aktif sebelum menghapus pegawai.");
+      Object.assign(target, { state: "inactive", deletedAt: now });
+    }
+  } else if (cmd.type === "employee") {
     if (
       cmd.name.trim().length < 2 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cmd.email)

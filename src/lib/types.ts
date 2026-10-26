@@ -13,12 +13,14 @@ export interface User {
   phone: string;
   role: Role;
   state: "active" | "inactive" | "pending";
+  deletedAt?: string;
 }
 export interface Category {
   id: string;
   name: string;
   description: string;
   active: boolean;
+  deletedAt?: string;
 }
 export interface Response {
   id: string;
@@ -98,6 +100,12 @@ export interface MutationResult {
   user?: User;
 }
 export type Command =
+  | {
+      type: "delete";
+      actorId: string;
+      id: string;
+      entity: "categories" | "citizens" | "employees";
+    }
   | { type: "submit"; actorId: string; draft: Draft; requestId: string }
   | {
       type: "verify";

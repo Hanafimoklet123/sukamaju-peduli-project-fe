@@ -334,12 +334,16 @@ export function DataTable({
   rows,
   count,
   note,
+  compactMobile = false,
+  mobileTable = false,
 }: {
   title: string;
   headers: string[];
   rows: ReactNode[][];
   count?: number;
   note?: string;
+  compactMobile?: boolean;
+  mobileTable?: boolean;
 }) {
   return (
     <Card className="data-card">
@@ -356,7 +360,9 @@ export function DataTable({
       </div>
       {rows.length ? (
         <>
-          <div className="desktop-table">
+          <div
+            className={`desktop-table${mobileTable ? " keep-mobile-table" : ""}`}
+          >
             <table>
               <thead>
                 <tr>
@@ -376,11 +382,30 @@ export function DataTable({
               </tbody>
             </table>
           </div>
-          <div className="mobile-records">
+          <div
+            className={`mobile-records${compactMobile ? " compact-records" : ""}${mobileTable ? " hide-mobile-records" : ""}`}
+          >
             {rows.map((r, i) => (
-              <article key={i} className="mobile-record">
+              <article
+                key={i}
+                className={`mobile-record${headers.includes("Deskripsi") && headers.includes("Status") ? " category-record" : ""}`}
+              >
                 {r.map((cell, j) => (
-                  <div key={j}>
+                  <div
+                    key={j}
+                    data-field={headers[j]}
+                    className={
+                      [
+                        "Deskripsi",
+                        "Alasan",
+                        "Pengaduan",
+                        "Judul",
+                        "Aksi atau objek",
+                      ].includes(headers[j])
+                        ? "record-long-text"
+                        : undefined
+                    }
+                  >
                     <small className="muted">{headers[j]}</small>
                     <div>{cell}</div>
                   </div>

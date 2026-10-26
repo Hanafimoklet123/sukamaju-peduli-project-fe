@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent } from "react";
-import { ArrowRight, Check, Upload, X } from "lucide-react";
+import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { ArrowRight, Check, ChevronDown, Upload, X } from "lucide-react";
 import { useDemo } from "@/lib/demo-provider";
 import { localDate } from "@/lib/domain";
 import {
@@ -887,6 +887,49 @@ export function ReportSuccess() {
     </>
   );
 }
+function ReportInfoPanel({
+  title,
+  subtitle,
+  children,
+  collapsible = true,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  collapsible?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const contentId = useId();
+  return (
+    <Card
+      className={`soft report-info-panel${collapsible ? " mobile-collapsible" : ""}`}
+    >
+      <h3 className="report-panel-title">{title}</h3>
+      {collapsible && (
+        <button
+          type="button"
+          className="report-panel-toggle"
+          aria-expanded={expanded}
+          aria-controls={contentId}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <span>
+            <strong>{title}</strong>
+            {subtitle && <small className="muted">{subtitle}</small>}
+          </span>
+          <ChevronDown size={20} aria-hidden="true" />
+        </button>
+      )}
+      <div
+        id={contentId}
+        className={`stack compact report-panel-content${expanded ? " expanded" : ""}`}
+      >
+        {children}
+      </div>
+    </Card>
+  );
+}
+
 export function ReportDetail({ id, role }: { id: string; role: Role }) {
   const store = useDemo(),
     router = useRouter(),
@@ -921,7 +964,7 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
   return (
     <>
       <Back href={base}>
-        {role === "pegawai" ? "Kembali ke tugas" : "Kembali ke pengaduan"}
+        {role === "pegawai" ? "Daftar tugas" : "Daftar pengaduan"}
       </Back>
       <div className="detail-header">
         <div className="meta-row">
@@ -962,7 +1005,9 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
               ? "Hasil penanganan dapat dibaca di bawah."
               : r.rejection}
       </Alert>
-      <div className="two-columns">
+      <div
+        className={`two-columns${role !== "warga" ? " staff-report-detail" : ""}`}
+      >
         <div className="stack">
           <Card>
             <h2>Isi laporan</h2>
@@ -1033,7 +1078,7 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
               )}
             </Card>
           )}
-          <Card>
+          <Card className="report-responses">
             <h2>Tanggapan untuk pelapor</h2>
             {r.responses.filter((x) => !x.internal).length ? (
               r.responses
@@ -1057,7 +1102,7 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
         </div>
         <aside className="stack">
           {role !== "warga" && (
-            <Card>
+            <Card className="report-management">
               <h2>
                 {role === "admin" ? "Pengelolaan laporan" : "Tugas penanganan"}
               </h2>
@@ -1121,7 +1166,7 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
               )}
             </Card>
           )}
-          <Card>
+          <Card className="report-progress">
             <h2>Perkembangan laporan</h2>
             <small className="muted">
               Riwayat terbaru ditampilkan di atas.
@@ -1140,8 +1185,10 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
             </ol>
           </Card>
           {role !== "warga" && (
-            <Card className="soft">
-              <h3>Koordinasi internal</h3>
+            <ReportInfoPanel
+              title="Koordinasi internal"
+              subtitle={`${r.responses.filter((x) => x.internal).length} catatan • ${r.assignments.length} penugasan`}
+            >
               <small className="muted">
                 Hanya admin dan pegawai berwenang.
               </small>
@@ -1174,10 +1221,12 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
                   ))}
                 </>
               )}
-            </Card>
+            </ReportInfoPanel>
           )}
-          <Card className="soft">
-            <h3>Tentang laporan ini</h3>
+          <ReportInfoPanel
+            title="Tentang laporan ini"
+            collapsible={role !== "warga"}
+          >
             <small className="muted">Nomor pengaduan</small>
             <p className="small">{r.number}</p>
             <small className="muted">Akses laporan</small>
@@ -1186,7 +1235,7 @@ export function ReportDetail({ id, role }: { id: string; role: Role }) {
               Isi asli tersimpan sebagai catatan laporan dan tidak dapat diubah
               setelah dikirim.
             </small>
-          </Card>
+          </ReportInfoPanel>
         </aside>
       </div>
       {action &&
