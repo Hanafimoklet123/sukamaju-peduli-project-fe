@@ -7,7 +7,7 @@ services:
         NEXT_PUBLIC_DATA_MODE: api
         NEXT_PUBLIC_ENABLE_DEMO: "false"
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3002}:3000"
     restart: unless-stopped
     init: true
     networks:
